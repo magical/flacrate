@@ -1,0 +1,17 @@
+flacrate overrides the sample rate of a FLAC file.
+The use case for this is if you have a file that has accidentally been encoded
+at the wrong sample rate (so it plays too fast or too slow).
+For example, a track that claims to be at 48kHz, but should actually be played at 44.1kHz.
+
+flacrate does not do any resampling or time-stretching. It just sets the sample rate in the metadata.
+
+Limitations:
+
+- flacrate can only be used to change a "standard" rate to another "standard" rate.
+  The standard rates are 8kHz, 16kHz, 22.05kHz, 24kHz, 32kHz, 44.1kHz, 48kHz, 88.2kHz,
+  96kHz, 176.4kHz, and 192kHz.
+  The reason is that these rates have a special encoding in the FRAME headers, so going
+  from a non-standard rate to a standard rate or vice versa would involve changing the size
+  of each frame.
+
+
