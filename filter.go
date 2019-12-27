@@ -133,10 +133,11 @@ func FixBytes(flacBytes []byte, patcher Patcher) error {
 		if found {
 			frameEnd = pos
 		} else {
-			if len(p) < reasonableFrameSize {
+			if len(p) <= reasonableFrameSize || len(p) <= si.maxFrameSize {
 				// i guess we are at EOF?
 				frameEnd = len(p)
 			} else {
+				//log.Printf("frame %x: can't find end, pos=%x, len=%x, reasonable=%x", len(flacBytes)-len(p), pos, len(p), reasonableFrameSize)
 				return errors.New("couldn't find next frame")
 			}
 		}
