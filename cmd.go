@@ -18,7 +18,7 @@ func main() {
 	rateFlag := flag.Int("rate", 0, "desired sample rate in Hz (required)")
 	flag.Parse()
 	args := flag.Args()
-	if len(args) != 1 {
+	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "flacrate: error: please specify one or more files to patch")
 		os.Exit(1)
 	}
