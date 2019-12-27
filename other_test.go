@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sigurn/crc16"
+)
 
 var varintTests = []struct {
 	str   string
@@ -48,6 +52,22 @@ func TestFindFrameHeader(t *testing.T) {
 		}
 		if pos != tt.pos {
 			t.Errorf("findFrameHeader(% x) = %v, found=%v; want %v, found=true", tt.str, pos, found, tt.pos)
+		}
+	}
+}
+
+var crc16tests = []struct {
+	str string
+}{
+	{"\xff\xf8\xca\x0c\x00\x7c\x00\x00\x00\x00\xa7\x34"}, // a complete frame
+}
+
+func TestCRC16(t *testing.T) {
+	for _, tt := range crc16tests {
+		got := crc16.Checksum([]byte(tt.str), crcTable16)
+		want := uint16(0)
+		if got != want {
+			t.Errorf("CRC16(%x) = %x, want %x", tt.str, got, want)
 		}
 	}
 }

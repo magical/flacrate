@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/go-daq/crc8"
+	"github.com/sigurn/crc16"
 )
 
 const flacMagic = "fLaC"
@@ -45,7 +46,7 @@ func FixBytes(flacBytes []byte, sampleRate int) error {
 			return errors.New("truncated metadata block")
 		}
 
-		if err := fixFrame(p[0:blockLength], sampleRate); err != nil {
+		if err := fixFrame(p[0:blockLength], 4, sampleRate); err != nil {
 			return err
 		}
 
@@ -110,9 +111,12 @@ func FixBytes(flacBytes []byte, sampleRate int) error {
 			}
 		}
 
-		// TODO: check CRC-16 for entire frame
+		// check CRC-16 for entire frame
+		if h := crc16.Checksum(p[:frameEnd], crcTable16); h != 0 {
+			return errors.New("invalid frame footer CRC")
+		}
 
-		if err := fixFrame(p[:frameEnd], sampleRate); err != nil {
+		if err := fixFrame(p[:frameEnd], headerLen, sampleRate); err != nil {
 			return err
 		}
 
@@ -131,6 +135,8 @@ func isSync(p []byte) bool {
 }
 
 var crcTable = crc8.MakeTable(0x07) // x^8 + x^2 + x^1 + x^0
+
+var crcTable16 = crc16.MakeTable(crc16.Params{Poly: 0x8005, Init: 0}) // x^16 + x^15 + x^2 + x^0
 
 // if not found, returns len(p), false
 func findFrameHeader(p []byte) (position int, found bool) {
@@ -179,7 +185,7 @@ func findFrameHeader(p []byte) (position int, found bool) {
 			} else {
 				//b := p[i : i+headerLen]
 				//h := crc8.Checksum(b, crcTable)
-				//log.Printf("invalid CRC: %x = %d", b, h)
+				//log.Printf("invalid frame header CRC: %x = %d", b, h)
 			}
 		}
 	}
@@ -238,10 +244,30 @@ const (
 
 // fixFrame sets the sample rate in a single frame.
 // The provided byte slice must be a complete FLAC frame.
-func fixFrame(frame []byte, sampleRate int) error {
+func fixFrame(frame []byte, headerLen int, sampleRate int) error {
 	p := frame
 	if isSync(frame) {
-		// TODO
+		switch p[2] & 0x0F {
+		case 0xC, 0xD, 0xE:
+			return errors.New("frame uses a nonstandard sample rate")
+		}
+
+		sampleCode, err := getSampleRateCode(sampleRate)
+		if err != nil {
+			return err
+		}
+		p[2] = p[2]&0xF0 | byte(sampleCode)
+
+		// Update the header CRC-8
+		p[headerLen-1] = crc8.Checksum(p[:headerLen-1], crcTable)
+
+		// Update the footer CRC-16
+		// There is a cleverer way to do this, which would avoid having
+		// to recompute the entire CRC, but this is easier
+		h := crc16.Checksum(p[:len(p)-2], crcTable16)
+		p[len(p)-2] = byte(h >> 8)
+		p[len(p)-1] = byte(h)
+
 		return nil
 	}
 
@@ -268,4 +294,35 @@ func fixFrame(frame []byte, sampleRate int) error {
 		p[16] = byte(sampleRate<<4) | p[16]&0x0F
 	}
 	return nil
+}
+
+// returns the frame header code for standard sample rates
+func getSampleRateCode(sampleRate int) (code int, err error) {
+	// https://xiph.org/flac/format.html#frame_header
+	switch sampleRate {
+	case 88200:
+		return 1, nil
+	case 176400:
+		return 2, nil
+	case 192000:
+		return 3, nil
+	case 8000:
+		return 4, nil
+	case 16000:
+		return 5, nil
+	case 22050:
+		return 6, nil
+	case 24000:
+		return 7, nil
+	case 32000:
+		return 8, nil
+	case 44100:
+		return 9, nil
+	case 48000:
+		return 10, nil
+	case 96000:
+		return 11, nil
+	default:
+		return 0, errors.New("nonstandard sample rate")
+	}
 }
