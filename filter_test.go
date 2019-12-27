@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"io/ioutil"
 	"testing"
 )
 
@@ -35,5 +36,23 @@ func TestFix(t *testing.T) {
 
 	if !bytes.Equal(got, want) {
 		t.Errorf("FixBytes failed.\ngot:\n%s\nwant:\n%s", hex.Dump(got), hex.Dump(want))
+	}
+}
+
+func TestFix2(t *testing.T) {
+	got, err := ioutil.ReadFile("testdata/derezz44100.flac")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := ioutil.ReadFile("testdata/derezz22050.flac")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := FixBytes(got, 22050); err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Errorf("FixBytes failed")
 	}
 }
