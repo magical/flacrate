@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/go-daq/crc8"
 	"github.com/sigurn/crc16"
@@ -146,20 +147,25 @@ func FixBytes(flacBytes []byte, patcher Patcher) error {
 		// if it doesn't match and we have more search space to work with,
 		// search for a different header
 		h := crc16.Checksum(p[:frameEnd], crcTable16)
-		for h != 0 && pos+1 < searchEnd {
-			newPos := pos + 1
-			i, found := findFrameHeader(p[newPos:searchEnd])
-			newPos += i
-			if !found {
-				break
+		if h != 0 {
+			frameStart := len(flacBytes) - len(p)
+			for h != 0 && pos+1 < searchEnd {
+				log.Printf("frame %x: possibly bogus frame header found at %x", frameStart, frameStart+pos)
+				newPos := pos + 1
+				i, found := findFrameHeader(p[newPos:searchEnd])
+				newPos += i
+				if !found {
+					break
+				}
+				h = crc16.Update(h, p[pos:newPos], crcTable16)
+				pos = newPos
 			}
-			h = crc16.Update(h, p[pos:newPos], crcTable16)
-			pos = newPos
-		}
-		if h == 0 {
-			frameEnd = pos
-		} else {
-			return errors.New("invalid frame footer CRC")
+			if h == 0 {
+				//log.Printf("frame %x: real end at %x", frameStart, frameStart+pos)
+				frameEnd = pos
+			} else {
+				return errors.New("invalid frame footer CRC")
+			}
 		}
 
 		if err := patcher.PatchFrame(p[:frameEnd], headerLen); err != nil {

@@ -41,7 +41,7 @@ func TestFixBytes(t *testing.T) {
 	}
 }
 
-func TestFix2(t *testing.T) {
+func TestFixBytes2(t *testing.T) {
 	got, err := ioutil.ReadFile("testdata/derezz44100.flac")
 	if err != nil {
 		t.Fatal(err)
@@ -60,3 +60,21 @@ func TestFix2(t *testing.T) {
 		t.Errorf("FixBytes failed")
 	}
 }
+
+func TestFixBytes3(t *testing.T) {
+	// This is a snippet of a file which has a bogus but valid-looking
+	// frame header in the middle of a frame payload.
+	data, err := ioutil.ReadFile("testdata/business2.flac")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = FixBytes(data, NullPatcher{})
+	if err != nil {
+		t.Errorf("want no error, got: %v", err)
+	}
+}
+
+type NullPatcher struct{}
+
+func (q NullPatcher) PatchFrame(p []byte, headerLen int) error { return nil }
