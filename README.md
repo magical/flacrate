@@ -25,7 +25,7 @@ Limitations
   it will stop and print an error, leaving half of your file in a broken, partially-modified
   state.
 
-  Make sure you have backups. 
+  Make sure you have backups.
 
   (In a pinch, running `flacrate -rate $originalrate` seems to work pretty
   well to recover after an error, but no guarantees.)
@@ -44,5 +44,5 @@ Install:
     go get github.com/magical/flacrate
 
 Run:
-    
+
     flacrate -rate 44100 track.flac
