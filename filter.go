@@ -142,7 +142,22 @@ func FixBytes(flacBytes []byte, patcher Patcher) error {
 		}
 
 		// check CRC-16 for entire frame
-		if h := crc16.Checksum(p[:frameEnd], crcTable16); h != 0 {
+		// if it doesn't match and we have more search space to work with,
+		// search for a different header
+		h := crc16.Checksum(p[:frameEnd], crcTable16)
+		for h != 0 && pos+1 < searchEnd {
+			newPos := pos + 1
+			i, found := findFrameHeader(p[newPos:searchEnd])
+			newPos += i
+			if !found {
+				break
+			}
+			h = crc16.Update(h, p[pos:newPos], crcTable16)
+			pos = newPos
+		}
+		if h == 0 {
+			frameEnd = pos
+		} else {
 			return errors.New("invalid frame footer CRC")
 		}
 
