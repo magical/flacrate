@@ -16,9 +16,16 @@ const (
 	frameHeaderMaxLen = 4 + 7 + 2 + 2 + 1
 )
 
-// FixBytes fixes the flac file given as a byte slice in place,
-// overwriting the sample rate in every frame with sampleRate.
-func FixBytes(flacBytes []byte, sampleRate int) error {
+type Patcher interface {
+	// PatchFrame takes a single block of FLAC data,
+	// either a metadata block or an audio frame,
+	// and potentially modifies it.
+	// HeaderLen is the size of the frame header.
+	PatchFrame(frame []byte, headerLen int) error
+}
+
+// FixBytes modifies a FLAC file in place, calling patcher.PatchFrame on every frame.
+func FixBytes(flacBytes []byte, patcher Patcher) error {
 	if len(flacBytes) < 4 {
 		return errors.New("file too short")
 	}
@@ -46,7 +53,7 @@ func FixBytes(flacBytes []byte, sampleRate int) error {
 			return errors.New("truncated metadata block")
 		}
 
-		if err := fixFrame(p[0:blockLength], 4, sampleRate); err != nil {
+		if err := patcher.PatchFrame(p[0:blockLength], 4); err != nil {
 			return err
 		}
 
@@ -116,7 +123,7 @@ func FixBytes(flacBytes []byte, sampleRate int) error {
 			return errors.New("invalid frame footer CRC")
 		}
 
-		if err := fixFrame(p[:frameEnd], headerLen, sampleRate); err != nil {
+		if err := patcher.PatchFrame(p[:frameEnd], headerLen); err != nil {
 			return err
 		}
 
@@ -242,9 +249,18 @@ const (
 	blockStreaminfo = 0
 )
 
+// SampleRatePatcher is a Patcher which overwrites the sample rate of every frame.
+type SampleRatePatcher struct {
+	sampleRate int
+}
+
+func NewSampleRatePatcher(sampleRate int) *SampleRatePatcher {
+	return &SampleRatePatcher{sampleRate}
+}
+
 // fixFrame sets the sample rate in a single frame.
 // The provided byte slice must be a complete FLAC frame.
-func fixFrame(frame []byte, headerLen int, sampleRate int) error {
+func (q *SampleRatePatcher) PatchFrame(frame []byte, headerLen int) error {
 	p := frame
 	if isSync(frame) {
 		switch p[2] & 0x0F {
@@ -252,7 +268,7 @@ func fixFrame(frame []byte, headerLen int, sampleRate int) error {
 			return errors.New("frame uses a nonstandard sample rate")
 		}
 
-		sampleCode, err := getSampleRateCode(sampleRate)
+		sampleCode, err := getSampleRateCode(q.sampleRate)
 		if err != nil {
 			return err
 		}
@@ -277,8 +293,8 @@ func fixFrame(frame []byte, headerLen int, sampleRate int) error {
 		if fileRate == 0 {
 			return errors.New("STREAMINFO: found sample rate of 0, which is invalid")
 		}
-		if fileRate == sampleRate {
-			return fmt.Errorf("STREAMINFO: sample rate is already %d", sampleRate)
+		if fileRate == q.sampleRate {
+			return fmt.Errorf("STREAMINFO: sample rate is already %d", q.sampleRate)
 		}
 		switch fileRate {
 		case 8000, 16000, 24000, 32000, 48000, 96000, 192000,
@@ -289,9 +305,9 @@ func fixFrame(frame []byte, headerLen int, sampleRate int) error {
 			return fmt.Errorf("STREAMINFO: found nonstandard sample rate %d, which is unsupported", fileRate)
 		}
 
-		p[14] = byte(sampleRate >> 12)
-		p[15] = byte(sampleRate >> 4)
-		p[16] = byte(sampleRate<<4) | p[16]&0x0F
+		p[14] = byte(q.sampleRate >> 12)
+		p[15] = byte(q.sampleRate >> 4)
+		p[16] = byte(q.sampleRate<<4) | p[16]&0x0F
 	}
 	return nil
 }

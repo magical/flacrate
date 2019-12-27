@@ -19,7 +19,7 @@ var testFile48000 = "664c6143000000221000100000000c00000c0bb80170000010004072783
 	"436f6d6d656e743d50726f63657373656420627920536f58fff8ca0c007c" +
 	"00000000a734"
 
-func TestFix(t *testing.T) {
+func TestFixBytes(t *testing.T) {
 	got, err := hex.DecodeString(testFile44100)
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +29,9 @@ func TestFix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = FixBytes(got, 48000)
+	patcher := NewSampleRatePatcher(48000)
+
+	err = FixBytes(got, patcher)
 	if err != nil {
 		t.Error(err)
 	}
@@ -49,7 +51,9 @@ func TestFix2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := FixBytes(got, 22050); err != nil {
+	patcher := NewSampleRatePatcher(22050)
+
+	if err := FixBytes(got, patcher); err != nil {
 		t.Error(err)
 	}
 	if !bytes.Equal(got, want) {
