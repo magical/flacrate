@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/go-daq/crc8"
 )
@@ -231,6 +232,40 @@ func varintLength(p []byte) (size int, valid bool) {
 	return n, valid
 }
 
+const (
+	blockStreaminfo = 0
+)
+
 // fixFrame sets the sample rate in a single frame.
 // The provided byte slice must be a complete FLAC frame.
-func fixFrame(frame []byte, sampleRate int) error { return nil }
+func fixFrame(frame []byte, sampleRate int) error {
+	p := frame
+	if isSync(frame) {
+		// TODO
+		return nil
+	}
+
+	// Metadata block
+	if p[0]&0x7F == blockStreaminfo {
+		fileRate := int(p[14])<<12 + int(p[15])<<4 + int(p[16]>>4)
+		if fileRate == 0 {
+			return errors.New("STREAMINFO: found sample rate of 0, which is invalid")
+		}
+		if fileRate == sampleRate {
+			return fmt.Errorf("STREAMINFO: sample rate is already %d", sampleRate)
+		}
+		switch fileRate {
+		case 8000, 16000, 24000, 32000, 48000, 96000, 192000,
+			22050, 44100, 88200, 176400:
+			// ok
+			//fmt.Printf("STREAMINFO: found sample rate %d", fileRate)
+		default:
+			return fmt.Errorf("STREAMINFO: found nonstandard sample rate %d, which is unsupported", fileRate)
+		}
+
+		p[14] = byte(sampleRate >> 12)
+		p[15] = byte(sampleRate >> 4)
+		p[16] = byte(sampleRate<<4) | p[16]&0x0F
+	}
+	return nil
+}
