@@ -274,15 +274,7 @@ func (q *SampleRatePatcher) PatchFrame(frame []byte, headerLen int) error {
 		}
 		p[2] = p[2]&0xF0 | byte(sampleCode)
 
-		// Update the header CRC-8
-		p[headerLen-1] = crc8.Checksum(p[:headerLen-1], crcTable)
-
-		// Update the footer CRC-16
-		// There is a cleverer way to do this, which would avoid having
-		// to recompute the entire CRC, but this is easier
-		h := crc16.Checksum(p[:len(p)-2], crcTable16)
-		p[len(p)-2] = byte(h >> 8)
-		p[len(p)-1] = byte(h)
+		FixCRCs(frame, headerLen)
 
 		return nil
 	}
@@ -341,4 +333,19 @@ func getSampleRateCode(sampleRate int) (code int, err error) {
 	default:
 		return 0, errors.New("nonstandard sample rate")
 	}
+}
+
+// FixCRCs updates the header and footer CRCs for an audio frame.
+// It does not do any checking to verify that the data
+// given is actually an audio frame.
+func FixCRCs(p []byte, headerLen int) {
+	// Update the header CRC-8
+	p[headerLen-1] = crc8.Checksum(p[:headerLen-1], crcTable)
+
+	// Update the footer CRC-16
+	// There is a cleverer way to do this, which would avoid having
+	// to recompute the entire CRC, but this is easier
+	h := crc16.Checksum(p[:len(p)-2], crcTable16)
+	p[len(p)-2] = byte(h >> 8)
+	p[len(p)-1] = byte(h)
 }
