@@ -24,6 +24,11 @@ type Patcher interface {
 	PatchFrame(frame []byte, headerLen int) error
 }
 
+type streaminfo struct {
+	minFrameSize int
+	maxFrameSize int
+}
+
 // FixBytes modifies a FLAC file in place, calling patcher.PatchFrame on every frame.
 func FixBytes(flacBytes []byte, patcher Patcher) error {
 	if len(flacBytes) < 4 {
@@ -34,6 +39,7 @@ func FixBytes(flacBytes []byte, patcher Patcher) error {
 	}
 	// Metadata blocks
 	// https://xiph.org/flac/format.html#metadata_block
+	var si streaminfo
 	p := flacBytes[4:]
 	for lastBlock := false; !lastBlock; {
 		if len(p) <= 0 {
@@ -51,6 +57,12 @@ func FixBytes(flacBytes []byte, patcher Patcher) error {
 
 		if len(p) < 4+blockLength {
 			return errors.New("truncated metadata block")
+		}
+
+		// get some info from the STREAMINFO block
+		if blockType == blockStreaminfo {
+			si.minFrameSize = int(p[8])<<16 | int(p[9])<<8 | int(p[10])
+			si.maxFrameSize = int(p[11])<<16 | int(p[12])<<8 | int(p[13])
 		}
 
 		if err := patcher.PatchFrame(p[0:blockLength], 4); err != nil {
@@ -103,8 +115,19 @@ func FixBytes(flacBytes []byte, patcher Patcher) error {
 		// Sooo... that's what we'll do. Search for the sync code, check the CRC,
 		// if it's right, we found a frame, if it's not, move on.
 
-		pos, found := findFrameHeader(p[headerLen:])
-		pos += headerLen
+		searchStart := headerLen
+		searchEnd := len(p)
+		if searchStart < si.minFrameSize {
+			searchStart = si.minFrameSize
+			searchEnd = si.maxFrameSize + frameHeaderMaxLen
+			if len(p) < searchEnd {
+				searchEnd = len(p)
+			}
+		}
+		pos, found := findFrameHeader(p[searchStart:searchEnd])
+		pos += searchStart
+
+		// XXX rewrite this logic
 		const reasonableFrameSize = 16 * 1024
 		var frameEnd int
 		if found {
@@ -147,7 +170,6 @@ var crcTable16 = crc16.MakeTable(crc16.Params{Poly: 0x8005, Init: 0}) // x^16 + 
 
 // if not found, returns len(p), false
 func findFrameHeader(p []byte) (position int, found bool) {
-	// TODO: limit search between min frame size and max frame size (from STREAMINFO block)
 	//log.Println("findFrameHeader start")
 	//if len(p) < 20 {
 	//	log.Printf("%x", p)
