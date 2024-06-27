@@ -1,0 +1,11 @@
+github.com/edsrzf/mmap-go v1.0.1-0.20190108065903-904c4ced31cd h1:5YaQigFlQK50yop9LoQwxVAic19OCuAygbETTgB/n0Q=
+github.com/edsrzf/mmap-go v1.0.1-0.20190108065903-904c4ced31cd/go.mod h1:W3m91qexYIu40kcj8TLXNUSTCKprH8UQ3GgH5/Xyfc0=
+github.com/go-daq/crc8 v0.0.0-20170116120732-380c22547098 h1:3nEKbx1O3wy7Czi49ALR70ApaFyHp1SDdgTxb7lsrns=
+github.com/go-daq/crc8 v0.0.0-20170116120732-380c22547098/go.mod h1:AaVLbiJT3SvaMMo8D1evl9xPwKu0uhovohUnFuB9ggw=
+github.com/sigurn/crc16 v0.0.0-20160107003519-da416fad5162 h1:2zlAtlrum6lg2lMiUWznq04fDudBDajMFl94Zyis67Y=
+github.com/sigurn/crc16 v0.0.0-20160107003519-da416fad5162/go.mod h1:9/etS5gpQq9BJsJMWg1wpLbfuSnkm8dPF6FdW2JXVhA=
+github.com/sigurn/utils v0.0.0-20190728110027-e1fefb11a144 h1:ccb8W1+mYuZvlpn/mJUMAbsFHTMCpcJBS78AsBQxNcY=
+github.com/sigurn/utils v0.0.0-20190728110027-e1fefb11a144/go.mod h1:VRI4lXkrUH5Cygl6mbG1BRUfMMoT2o8BkrtBDUAm+GU=
+golang.org/x/sys v0.0.0-20180816055513-1c9583448a9c/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20181221143128-b4a75ba826a6 h1:IcgEB62HYgAhX0Nd/QrVgZlxlcyxbGQHElLUhW2X4Fo=
+golang.org/x/sys v0.0.0-20181221143128-b4a75ba826a6/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
